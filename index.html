@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YOLO Object Detection</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #video, #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body>
+  <!-- Hidden video element to capture camera -->
+  <video id="video" autoplay playsinline muted></video>
+  <!-- Canvas for drawing boxes -->
+  <canvas id="overlay"></canvas>
+
+  <!-- ONNX Runtime Web -->
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const ctx = overlay.getContext('2d');
+    let session;
+
+    async function setupCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      await video.play();
+      overlay.width = video.videoWidth;
+      overlay.height = video.videoHeight;
+    }
+
+    function preprocess(frame) {
+      const width = session.inputNames.length ? session.inputMetadata[session.inputNames[0]].dimensions[3] : 640;
+      const height = session.inputNames.length ? session.inputMetadata[session.inputNames[0]].dimensions[2] : 640;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(frame, 0, 0, width, height);
+      const imageData = ctx.getImageData(0, 0, width, height).data;
+      const data = new Float32Array(width * height * 3);
+      for (let i = 0; i < width * height; i++) {
+        data[i] = imageData[i * 4] / 255.0;
+        data[i + width * height] = imageData[i * 4 + 1] / 255.0;
+        data[i + 2 * width * height] = imageData[i * 4 + 2] / 255.0;
+      }
+      return new ort.Tensor('float32', data, [1, 3, height, width]);
+    }
+
+    function drawDetections(detections) {
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      ctx.lineWidth = 2;
+      ctx.font = '16px sans-serif';
+      detections.forEach(det => {
+        const [x, y, w, h] = det.bbox;
+        ctx.strokeStyle = 'red';
+        ctx.strokeRect(x * overlay.width, y * overlay.height, w * overlay.width, h * overlay.height);
+        ctx.fillStyle = 'red';
+        ctx.fillText(`${det.class} (${(det.score * 100).toFixed(1)}%)`, x * overlay.width, y * overlay.height - 5);
+      });
+    }
+
+    function postprocess(output, threshold = 0.25) {
+      // Parse raw output tensor into bounding boxes, scores, and class indices
+      // This implementation assumes YOLOv5 ONNX output with shape [1, 25200, 85]
+      const data = output.data;
+      const results = [];
+      for (let i = 0; i < data.length; i += 85) {
+        const scores = data.slice(i + 5, i + 85);
+        const maxScore = Math.max(...scores);
+        const cls = scores.indexOf(maxScore);
+        if (maxScore > threshold) {
+          const cx = data[i];
+          const cy = data[i + 1];
+          const w = data[i + 2];
+          const h = data[i + 3];
+          // convert to [x, y, w, h] normalized
+          results.push({ bbox: [cx - w/2, cy - h/2, w, h], score: maxScore, class: cls });
+        }
+      }
+      // TODO: apply Non-Maximum Suppression for better results
+      return results;
+    }
+
+    async function detectLoop() {
+      const inputTensor = preprocess(video);
+      const feeds = {};
+      feeds[session.inputNames[0]] = inputTensor;
+      const outputMap = await session.run(feeds);
+      const outputTensor = outputMap[session.outputNames[0]];
+      const detections = postprocess(outputTensor);
+      drawDetections(detections);
+      requestAnimationFrame(detectLoop);
+    }
+
+    async function init() {
+      await setupCamera();
+      // Load the YOLOv5 ONNX model (place in /models/yolov5s.onnx)
+      session = await ort.InferenceSession.create('models/yolov5s.onnx');
+      detectLoop();
+    }
+
+    init();
+  </script>
+</body>
+</html>
