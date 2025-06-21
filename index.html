@@ -105,7 +105,7 @@
     async function init() {
       await setupCamera();
       // Load the YOLOv5 ONNX model (place in /models/yolov5s.onnx)
-      session = await ort.InferenceSession.create('models/yolov5s.onnx');
+      session = await ort.InferenceSession.create('models/yolov8s.onnx');
       detectLoop();
     }
 
