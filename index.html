@@ -33,6 +33,18 @@
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
   <button id="switch-camera-btn">Switch Camera</button>
+  <div id="fps-counter" style="
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: #fff;
+    background: rgba(0,0,0,0.5);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 18px;
+    z-index: 20;
+  ">FPS: 0</div>
 
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
   <script>
@@ -58,6 +70,20 @@
       'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
       'hair drier', 'toothbrush'
     ];
+
+    let frameCount = 0;
+    let lastFpsUpdate = performance.now();
+    let fps = 0;
+
+    function updateFpsCounter() {
+      const now = performance.now();
+      if (now - lastFpsUpdate >= 1000) {
+        fps = frameCount;
+        frameCount = 0;
+        lastFpsUpdate = now;
+        document.getElementById('fps-counter').textContent = `FPS: ${fps}`;
+      }
+    }
 
     async function setupCamera() {
       if (currentStream) {
@@ -192,6 +218,8 @@
     }
 
     async function detectLoop() {
+      frameCount++;
+      updateFpsCounter();
       const inputTensor = preprocess(video);
       const feeds = { [session.inputNames[0]]: inputTensor };
       const outputMap = await session.run(feeds);
@@ -208,7 +236,7 @@
       });
 
       await setupCamera();
-      console.log('20250621-2005')
+      console.log('20250624-2005')
       
       // Load your YOLOv8s ONNX model (e.g. /models/yolov8s.onnx)
       session = await ort.InferenceSession.create('models/yolov8s.onnx');
