@@ -86,7 +86,7 @@
     let frameCount = 0;
     let lastFpsUpdate = performance.now();
     let fps = 0;
-    let pageLoadTime = performance.now();
+    let pageLoadTime = null;
     let firstResponseTime = null;
     let firstResponseRecorded = false;
 
@@ -101,7 +101,7 @@
     }
 
     function recordFirstResponse() {
-      if (!firstResponseRecorded) {
+      if (!firstResponseRecorded && pageLoadTime !== null) {
         firstResponseTime = performance.now();
         const timeDiff = Math.round(firstResponseTime - pageLoadTime);
         document.getElementById('time-indicator').textContent = `First Response: ${timeDiff}ms`;
@@ -123,6 +123,9 @@
         await video.play();
         overlay.width = video.videoWidth;
         overlay.height = video.videoHeight;
+        pageLoadTime = performance.now();
+        document.getElementById('time-indicator').textContent = 'First Response: --';
+        firstResponseRecorded = false;
       } catch (error) {
           console.error(`Error accessing camera with facingMode ${currentFacingMode}:`, error);
           alert(`Could not switch to ${currentFacingMode} camera. Please ensure it is available and permissions are granted.`);
@@ -261,7 +264,7 @@
       });
 
       await setupCamera();
-      console.log('20250624-2005')
+      console.log('20250707-1502')
       
       // Load your YOLOv8s ONNX model (e.g. /models/yolov8s.onnx)
       session = await ort.InferenceSession.create('models/yolov8n.onnx');
