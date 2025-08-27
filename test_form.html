@@ -1,0 +1,100 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .upload-container {
+            text-align: center;
+            padding: 40px;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+        }
+
+        .upload-btn {
+            background-color: #0D1164;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+
+        .upload-btn:hover {
+            background-color: #090c4a;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        .preview {
+            margin-top: 20px;
+            max-width: 300px;
+            border-radius: 5px;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="upload-container">
+    <h3>Select an image</h3>
+    <p>Choose from camera or photo library</p>
+
+    <input type="file" id="imageInput" accept="image/*">
+    <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
+        Upload image
+    </button>
+
+    <div id="preview"></div>
+    <div id="fileInfo"></div>
+</div>
+
+<script>
+  document.getElementById('imageInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    const preview = document.getElementById('preview');
+    const fileInfo = document.getElementById('fileInfo');
+
+    if (file) {
+      fileInfo.innerHTML = `
+                    <strong>File info:</strong><br>
+                    Name: ${file.name}<br>
+                    Size: ${(file.size / 1024 / 1024).toFixed(2)} MB<br>
+                    Type: ${file.type}
+                `;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `<img src="${e.target.result}" class="preview" alt="Preview">`;
+      };
+      reader.readAsDataURL(file);
+
+      console.log('Selected file:', file);
+    } else {
+      preview.innerHTML = '';
+      fileInfo.innerHTML = '';
+    }
+  });
+</script>
+</body>
+</html>
